@@ -1,0 +1,161 @@
+---
+title: "Mining Financial Articles"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tm.plugin.webmining)
+library(purrr)
+library(knitr)
+library(dplyr)
+library(tidytext)
+library(stringr)
+```
+
+## Mining Financial Articles
+
+The tm.plugin.webmining connects to online feeds to retrieve news articles based on a keyword. For example, performing WebCorpus(GoogleFinanceSource("NASDAQ:MSFT"))) allows us to retrieve the 20 most recent articles related to the Microsoft (MSFT) stock.
+
+In this project I will retrieve recent articles relevant to seven major technology stocks: Microsoft, Apple, Google, Amazon, Facebook, Yahoo, and Netflix.
+
+```{r}
+company <- c("Microsoft", "Apple", "Google", "Amazon", "Facebook",
+             "Yahoo", "Netflix")
+symbol <- c("MSFT", "AAPL", "GOOG", "AMZN", "FB", "YHOO", "NFLX")
+
+download_articles <- function(symbol) {
+  WebCorpus(GoogleFinanceSource(paste0("NASDAQ:", symbol)))
+}
+
+stock_articles <- data_frame(company = company,
+                             symbol = symbol) %>%
+  mutate(corpus = map(symbol, download_articles))
+```
+
+This uses the map() function from the purrr package, which applies a function to each item in symbol to create a list, which I store in the corpus list column.
+
+```{r}
+stock_articles
+```
+
+Now, I have items and each of the items in the corpus list column is a WebCorpus object, which is a special case of a corpus like acq. I can thus turn each into a data frame.
+
+```{r}
+stock_tokens <- stock_articles %>%
+  unnest(map(corpus, tidy)) %>%
+  unnest_tokens(word, text) %>%
+  select(company, datetimestamp, word, id, heading)
+
+stock_tokens
+```
+
+I see some of each article’s metadata alongside the words used. I could use tf-idf to determine which words were most specific to each stock symbol.
+
+```{r}
+stock_tf_idf <- stock_tokens %>%
+  count(company, word) %>%
+  filter(!str_detect(word, "\\d+")) %>%
+  bind_tf_idf(word, company, n) %>%
+  arrange(-tf_idf)
+```
+
+In the next step, I have visualized the top terms for each. It was expected, that the company’s name and symbol are typically included, but so are several of their product offerings and executives, as well as companies they are making deals with (such as Disney with Netflix).
+
+```{r}
+stock_tf_idf %>%
+  group_by(company) %>%
+  top_n(10, tf_idf) %>%
+  ungroup() %>%
+  mutate(word = reorder(word, tf_idf)) %>%
+  ggplot(aes(word, tf_idf, fill = company)) +
+  geom_col(show.legend = FALSE) +
+  facet_wrap(~ company, scales = "free") +
+  coord_flip() +
+  labs(x = "word",
+       y = "tf-idf") +
+  ggtitle("The 8 Words with the highest tf-idf\nin recent Articles specific to each Company") +
+  theme(plot.title = element_text(color="black", size=14, face="bold.italic", hjust = 0.5),
+        axis.title.x = element_text(color="black", size=12),
+        axis.title.y = element_text(color="black", size=12))
+```
+
+Next, I would likely want to use sentiment analysis to determine whether the news coverage was positive or negative. Before I run such an analysis, I should look at what words would contribute the most to positive and negative sentiments. For example, I could examine this within the AFINN lexicon.
+
+```{r}
+stock_tokens %>%
+  anti_join(stop_words, by = "word") %>%
+  count(word, id, sort = TRUE) %>%
+  inner_join(get_sentiments("afinn"), by = "word") %>%
+  group_by(word) %>%
+  summarize(contribution = sum(n * score),
+            abscontribution = abs(contribution)) %>%
+  top_n(12, abscontribution) %>%
+  mutate(word = reorder(word, contribution)) %>%
+  ggplot(aes(word, contribution)) +
+  geom_col() +
+  coord_flip() +
+  labs(y = "frequency of word * AFINN score") +
+    ggtitle("The Words with the largest Contribution to sentiment Scores in\nrecent financial Articles, according to the AFINN Dictionary. The\n‘contribution’ is the Product of the Word and the sentiment Score.") +
+  theme(plot.title = element_text(color="black", size=14, face="bold.italic", hjust = 0.5),
+        axis.title.x = element_text(color="black", size=12),
+        axis.title.y = element_text(color="black", size=12))
+```
+
+The words “share” and “shares” are counted as positive verbs by the AFINN lexicon (“Alice will share her cake with Bob”), but they’re actually neutral nouns (“The stock price is $12 per share”) that could just as easily be in a positive sentence as a negative one. The word “fool” is even more deceptive: it refers to Motley Fool, a financial services company. In short, we can see that the AFINN sentiment lexicon is entirely unsuited to the context of financial data (as are the NRC and Bing lexicons).
+
+Alternative, I introduce another sentiment lexicon: the Loughran and McDonald dictionary of financial sentiment terms (Loughran and McDonald 2011). This dictionary was developed based on analyses of financial reports, and intentionally avoids words like “share” and “fool”, as well as subtler terms like “liability” and “risk” that may not have a negative meaning in a financial context.
+
+The Loughran data divides words into six sentiments: “positive”, “negative”, “litigious”, “uncertain”, “constraining”, and “superfluous”. We could start by examining the most common words belonging to each sentiment within this text dataset.
+
+```{r}
+stock_tokens %>%
+  count(word) %>%
+  inner_join(get_sentiments("loughran"), by = "word") %>%
+  group_by(sentiment) %>%
+  top_n(5, n) %>%
+  ungroup() %>%
+  mutate(word = reorder(word, n)) %>%
+  ggplot(aes(word, n)) +
+  geom_col() +
+  coord_flip() +
+  facet_wrap(~ sentiment, scales = "free") +
+  ylab("frequency of this word in the recent financial articles") +
+  ggtitle("The most common Words in the financial News Articles\nassociated with each of the six Sentiments\nin the Loughran and McDonald Lexicon") +
+  theme(plot.title = element_text(color="black", size=14, face="bold.italic", hjust = 0.5),
+        axis.title.x = element_text(color="black", size=12),
+        axis.title.y = element_text(color="black", size=12))
+```
+
+These assignments of words to sentiments look more reasonable: common positive words include “strong” and “better”, but not “shares” or “growth”, while negative words include “volatility” but not “fool”. The other sentiments look reasonable as well: the most common “uncertainty” terms include “could” and “may”.
+
+Now that I know I can trust the dictionary to approximate the articles’ sentiments, I can use our typical methods for counting the number of uses of each sentiment-associated word in each corpus.
+
+```{r}
+stock_sentiment_count <- stock_tokens %>%
+  inner_join(get_sentiments("loughran"), by = "word") %>%
+  count(sentiment, company) %>%
+  spread(sentiment, n, fill = 0)
+
+stock_sentiment_count
+```
+
+It might be interesting to examine which company has the most news with “litigious” or “uncertain” terms. But the simplest measure is to see whether the news is more positive or negative. As a general quantitative measure of sentiment, we’ll use “(positive - negative) / (positive + negative)”.
+
+```{r}
+stock_sentiment_count %>%
+  mutate(score = (positive - negative) / (positive + negative)) %>%
+  mutate(company = reorder(company, score)) %>%
+  ggplot(aes(company, score, fill = score > 0)) +
+  geom_col(show.legend = FALSE) +
+  coord_flip() +
+  labs(x = "Company",
+       y = "Positivity score among 20 recent news articles") +
+  ggtitle("“Positivity” of the News Coverage around each Stock in January 2017,\ncalculated as (positive - negative) / (positive + negative),\nbased on uses of positive and negative Words\nin 20 recent News Articles about each Company") +
+  theme(plot.title = element_text(color="black", size=14, face="bold.italic", hjust = 0.5),
+        axis.title.x = element_text(color="black", size=12),
+        axis.title.y = element_text(color="black", size=12))
+```
+
+Based on this analysis, I will say that in January 2017 most of the coverage of Yahoo was strongly negative, while coverage of Google and Amazon was the most positive. A glance at current financial headlines suggest that Yahoos is on the right track, while Netflix has overtaken Google and Amazon.
