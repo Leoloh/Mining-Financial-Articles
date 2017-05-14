@@ -81,6 +81,8 @@ stock_tf_idf %>%
         axis.title.y = element_text(color="black", size=12))
 ```
 
+![png](https://github.com/FercenBulut/Mining-Financial-Articles/blob/master/02%20-%20Images/01_the_8_words_with_the_highest_tf-idf_in_recent_articles_specific_to_each_company.jpg)
+
 Next, I would likely want to use sentiment analysis to determine whether the news coverage was positive or negative. Before I run such an analysis, I should look at what words would contribute the most to positive and negative sentiments. For example, I could examine this within the AFINN lexicon.
 
 ```{r}
@@ -102,6 +104,8 @@ stock_tokens %>%
         axis.title.x = element_text(color="black", size=12),
         axis.title.y = element_text(color="black", size=12))
 ```
+
+![png](https://github.com/FercenBulut/Mining-Financial-Articles/blob/master/02%20-%20Images/02_the_words_with_the_largest_contribution_to_sentiment_scores_in_recent_financial_articles%2C_according_to_the_AFINN_ictionary._the_%E2%80%98contribution%E2%80%99_is_the_product_of_the_word_and_the_sentiment_core..jpg)
 
 The words “share” and “shares” are counted as positive verbs by the AFINN lexicon (“Alice will share her cake with Bob”), but they’re actually neutral nouns (“The stock price is $12 per share”) that could just as easily be in a positive sentence as a negative one. The word “fool” is even more deceptive: it refers to Motley Fool, a financial services company. In short, we can see that the AFINN sentiment lexicon is entirely unsuited to the context of financial data (as are the NRC and Bing lexicons).
 
@@ -127,6 +131,8 @@ stock_tokens %>%
         axis.title.x = element_text(color="black", size=12),
         axis.title.y = element_text(color="black", size=12))
 ```
+
+![png](https://github.com/FercenBulut/Mining-Financial-Articles/blob/master/02%20-%20Images/03_the_most_common_words_in_the_financial_news_articles_associated_with_each_of_the_six_sentiments_in_the_Loughran_and_McDonald_lexicon.jpg)
 
 These assignments of words to sentiments look more reasonable: common positive words include “strong” and “better”, but not “shares” or “growth”, while negative words include “volatility” but not “fool”. The other sentiments look reasonable as well: the most common “uncertainty” terms include “could” and “may”.
 
@@ -157,5 +163,7 @@ stock_sentiment_count %>%
         axis.title.x = element_text(color="black", size=12),
         axis.title.y = element_text(color="black", size=12))
 ```
+
+![png](https://github.com/FercenBulut/Mining-Financial-Articles/blob/master/02%20-%20Images/04_%E2%80%9CPositivity%E2%80%9D_of_the_news_coverage_around_each_stock_in_january_2017%2C_calculated_as_(positive_-_negative)_:_(positive_%2B_negative)%2C_based_on_uses_of_positive_and_negative_words_in_20_recent_news_articles_about_each_company.jpg)
 
 Based on this analysis, I will say that in January 2017 most of the coverage of Yahoo was strongly negative, while coverage of Google and Amazon was the most positive. A glance at current financial headlines suggest that Yahoos is on the right track, while Netflix has overtaken Google and Amazon.
