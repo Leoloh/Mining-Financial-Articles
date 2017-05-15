@@ -16,7 +16,7 @@ library(stringr)
 
 ## Mining Financial Articles
 
-The tm.plugin.webmining connects to online feeds to retrieve news articles based on a keyword. For example, performing WebCorpus(GoogleFinanceSource("NASDAQ:MSFT"))) allows us to retrieve the 20 most recent articles related to the Microsoft (MSFT) stock.
+The tm.plugin.webmining connects to online feeds to retrieve news articles based on a keyword. For example, performing WebCorpus(GoogleFinanceSource("NASDAQ:MSFT"))) allows me to retrieve the 20 most recent articles related to the Microsoft (MSFT) stock.
 
 In this project I will retrieve recent articles relevant to seven major technology stocks: Microsoft, Apple, Google, Amazon, Facebook, Yahoo, and Netflix.
 
