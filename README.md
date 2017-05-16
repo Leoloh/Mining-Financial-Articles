@@ -9,9 +9,11 @@ knitr::opts_chunk$set(echo = TRUE)
 library(tm.plugin.webmining)
 library(purrr)
 library(knitr)
+library(tidyr)
 library(dplyr)
 library(tidytext)
 library(stringr)
+library(ggplot2)
 ```
 
 ## Mining Financial Articles
@@ -107,7 +109,7 @@ stock_tokens %>%
 
 ![png](https://github.com/FercenBulut/Mining-Financial-Articles/blob/master/02%20-%20Images/02_the_words_with_the_largest_contribution_to_sentiment_scores_in_recent_financial_articles%2C_according_to_the_AFINN_ictionary._the_%E2%80%98contribution%E2%80%99_is_the_product_of_the_word_and_the_sentiment_core..jpg)
 
-The words “share” and “shares” are counted as positive verbs by the AFINN lexicon (“Alice will share her cake with Bob”), but they’re actually neutral nouns (“The stock price is $12 per share”) that could just as easily be in a positive sentence as a negative one. The word “fool” is even more deceptive: it refers to Motley Fool, a financial services company. In short, we can see that the AFINN sentiment lexicon is entirely unsuited to the context of financial data (as are the NRC and Bing lexicons).
+The words “share” and “shares” are counted as positive verbs by the AFINN lexicon (“Alice will share her cake with Bob”), but they’re actually neutral nouns (“The stock price is $12 per share”) that could just as easily be in a positive sentence as a negative one. The word “fool” is even more deceptive: it refers to Motley Fool, a financial services company. In short, I can see that the AFINN sentiment lexicon is entirely unsuited to the context of financial data (as are the NRC and Bing lexicons).
 
 Alternative, I introduce another sentiment lexicon: the Loughran and McDonald dictionary of financial sentiment terms (Loughran and McDonald 2011). This dictionary was developed based on analyses of financial reports, and intentionally avoids words like “share” and “fool”, as well as subtler terms like “liability” and “risk” that may not have a negative meaning in a financial context.
 
@@ -147,7 +149,7 @@ stock_sentiment_count <- stock_tokens %>%
 stock_sentiment_count
 ```
 
-It might be interesting to examine which company has the most news with “litigious” or “uncertain” terms. But the simplest measure is to see whether the news is more positive or negative. As a general quantitative measure of sentiment, we’ll use “(positive - negative) / (positive + negative)”.
+It might be interesting to examine which company has the most news with “litigious” or “uncertain” terms. But the simplest measure is to see whether the news is more positive or negative. As a general quantitative measure of sentiment, I will use “(positive - negative) / (positive + negative)”.
 
 ```{r}
 stock_sentiment_count %>%
